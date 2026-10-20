@@ -1,0 +1,63 @@
+:root {
+  --bg: #fbf8f4; --fg: #1d1a17; --muted: #6a625a; --accent: #b3380c;
+  --surface: #f0e9e1; --code-bg: #1d1a17; --code-fg: #f3ece4;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14110f; --fg: #f1ebe4; --muted: #a79d92; --accent: #ff7a45;
+    --surface: #211c18; --code-bg: #0b0908; --code-fg: #f3ece4;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-snap-type: y proximity; scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0; background: var(--bg); color: var(--fg);
+  font: 1.0625rem/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+nav {
+  position: sticky; top: 0; z-index: 1; display: flex; flex-wrap: wrap; gap: .25rem 1.25rem;
+  padding: .75rem 16px; background: var(--bg); border-bottom: 1px solid var(--surface);
+}
+nav a { color: var(--muted); text-decoration: none; }
+nav a:hover { color: var(--accent); }
+a { color: var(--accent); }
+a:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+section {
+  min-height: 100svh; scroll-snap-align: start; scroll-margin-top: 5rem;
+  padding: 3rem 16px; max-width: 62rem; margin: 0 auto;
+}
+h1 { font-size: clamp(2.25rem, 7vw, 4rem); line-height: 1.1; margin: 0 0 1rem; }
+h2 { font-size: clamp(1.6rem, 4.5vw, 2.4rem); line-height: 1.2; margin: 0 0 1.25rem; }
+.lead { font-size: 1.25rem; color: var(--muted); max-width: 40rem; }
+pre {
+  background: var(--code-bg); color: var(--code-fg); padding: 1rem; border-radius: 8px;
+  overflow-x: auto; font-size: .875rem; line-height: 1.5;
+}
+svg { max-width: 100%; height: auto; }
+h3 { font-size: 1.25rem; margin: 2.25rem 0 .75rem; }
+.links { color: var(--muted); }
+code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .9em; }
+pre code { font-size: inherit; }
+.src { margin: -.5rem 0 1.25rem; font-size: .875rem; color: var(--muted); }
+.todo { background: var(--surface); border-left: 4px solid var(--accent); padding: .5rem .75rem; font-size: .9rem; }
+.diagram { margin: 1.5rem 0; }
+.diagram svg { width: 100%; color: var(--fg); }
+.diagram .box rect { fill: var(--surface); stroke: var(--fg); stroke-width: 1.5; }
+.diagram .dashed rect, .diagram .dashed path { stroke: var(--accent); stroke-dasharray: 5 4; }
+.diagram .line path { stroke: currentColor; fill: none; stroke-width: 1.5; }
+.diagram .txt text { fill: var(--fg); font: 15px system-ui, sans-serif; }
+.diagram .txt .sub { fill: var(--muted); font-size: 12px; }
+.diagram .cap { fill: var(--muted); font: 12px system-ui, sans-serif; }
+.cards { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr)); }
+.card { background: var(--surface); border-radius: 8px; padding: 1rem 1.25rem; }
+.card h4 { margin: 0 0 .5rem; font-size: 1.1rem; }
+.card p { margin: 0; }
+.idea { margin: 2rem 0; }
+.idea h3 { margin-top: 0; }
+.idea dl { display: grid; grid-template-columns: 9rem 1fr; gap: .5rem 1rem; margin: 0; }
+.idea dt { color: var(--accent); font-weight: 600; }
+.idea dd { margin: 0; }
+@media (max-width: 40rem) { .idea dl { grid-template-columns: 1fr; gap: 0; } .idea dt { margin-top: .75rem; } }
+.site-cta { border-left: 4px solid var(--accent); padding: .75rem 1rem; background: var(--surface); font-size: 1.125rem; max-width: 40rem; }
+nav .ext { margin-left: auto; color: var(--accent); }

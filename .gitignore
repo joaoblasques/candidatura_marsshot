@@ -1,0 +1,9 @@
+# Private working notes — repo will be shared with Mars Shot
+private/
+.env
+.DS_Store
+node_modules/
+.superpowers/
+
+# Design and plan stay local (process notes, not part of the public application)
+docs/superpowers/

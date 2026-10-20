@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual env / uv
+.venv/
+venv/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Nora runtime state stores (default paths: outbox, pending actions, voice, memory) — local only
+.nora-*.json
+
+# Agentics runtime artifacts — keeper digests + the dreamer marker. Local-only; if committed/
+# rewritten they dirty the working tree and block release.sh / promote.sh (which require a
+# clean tree). They persist on disk for the dreamer to read; they just aren't tracked.
+docs/agentics/digests/
+docs/agentics/.last-dream
+
+# OS / editor
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Large media / screen recordings (demo videos etc.) — keep them out of the repo (git
+# holds binaries in history forever). Store demos in the vault or cloud, not in-tree.
+*.mp4
+*.mov
+# Exception: the ~1.8M marketing demo video is committed so the site self-hosts it (no external
+# hosting dependency). It changes rarely; keep other media out per the rule above.
+!/marketing/site/public/nora-demo.mp4
+
+# Local tool artifacts (Playwright browser output, wrangler state, dashboard scratch shots)
+.playwright-mcp/
+.wrangler/
+/cf-*.png
+/cf-create.md
+.worktrees/

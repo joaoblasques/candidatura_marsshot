@@ -1,0 +1,236 @@
+<!doctype html>
+<!-- link-base: https://github.com/joaoblasques/candidatura_marsshot/blob/main/ -->
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>João Blasques — candidatura à Mars Shot</title>
+<meta name="description" content="Candidatura espontânea à Mars Shot: do problema de negócio à solução em produção.">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<nav aria-label="Secções">
+  <a href="#abertura">Abertura</a>
+  <a href="#nora">Nora</a>
+  <a href="#como-trabalho">Como trabalho</a>
+  <a href="#ideias">Ideias</a>
+  <a href="#contacto">Contacto</a>
+  <a class="ext" href="https://joaoblasques.com">joaoblasques.com ↗</a>
+</nav>
+<main>
+  <section id="abertura">
+    <h1>João Blasques</h1>
+    <p class="lead">Candidatura espontânea à Mars Shot, para AI Solutions Lead.</p>
+    <p>Leio o vosso anúncio assim: tecnologia, produto, cliente e negócio são quatro conversas que raramente estão na mesma sala, e é entre elas que os projetos de IA se perdem a caminho da produção. É nessa ligação que eu trabalho.</p>
+    <p class="site-cta"><a href="https://joaoblasques.com"><strong>joaoblasques.com</strong></a> reúne o meu trabalho: Vitals, Corpus e Nora em destaque, mais pipelines de dados, dbt e orquestração, artigos e o meu CV. É aí que vês a profundidade; esta página é a ponte.</p>
+    <p>Sou consultor de Data Engineering com IA, por conta própria. Esta página mostra uma coisa que construí e pus em produção, a Nora, e o código por trás dela, para que possam ver como penso em vez de ler que penso.</p>
+    <p>Porquê a Mars Shot: acredito em IA prática, que resolve problemas de negócio reais e concretos, e tenho o mesmo entusiasmo que vocês. Passo o dia a trabalhar com IA, a criar produtos e soluções para os meus próprios problemas, e quero fazer isso a tempo inteiro. Sei também que vou aprender muito aqui.</p>
+  </section>
+
+  <section id="nora">
+    <h2>Nora: do problema à produção</h2>
+    <p class="lead">A Nora é um assistente de direção por email. Reencaminhas uma conversa e ela devolve-te um rascunho pronto a enviar. Quem envia és tu.</p>
+    <p class="links"><a href="https://nora-bennett.com">nora-bennett.com</a> · <a href="https://docs.nora-bennett.com">documentação</a> · <a href="https://github.com/joaoblasques/candidatura_marsshot/blob/main/nora/MIRROR.md">código (cópia sem histórico)</a></p>
+
+    <h3>O problema</h3>
+    <p>Um CEO vive no email. O que lhe custa tempo não é escrever, é decidir o que responder e a quem, e ter a certeza de que nada sai em seu nome sem querer. Um assistente que envia sozinho resolve o primeiro problema e cria um pior.</p>
+    <p>A Nora nasceu de um post de LinkedIn do Hugo de Sousa, fundador da Mars Shot, a recrutar um assistente pessoal. Pensei que boa parte desse trabalho se podia fazer com IA, e comecei a construir.</p>
+
+    <h3>O modelo de confiança</h3>
+    <p>Uma regra, sem exceções silenciosas: a Nora nunca envia como tu. Redige, tu envias. As poucas ações que saem para fora (hoje: proposta de reunião, partilha de ficheiro e reserva de agenda) seguem sempre o mesmo caminho: <strong>propõe → tu aprovas → a Nora age</strong>, a partir da sua própria identidade, claramente identificada.</p>
+    <!-- excerpt: nora/app/email/outbound.py:1-9 --><pre><code>&quot;&quot;&quot;Outbound send (U6).
+
+CEO-only by default (R1/KTD7): ``send_to_ceo`` is the only unconditional send. As of
+0.2.0 there is exactly ONE consent-gated exception — ``send_on_behalf`` — used solely
+to deliver a meeting proposal the CEO explicitly confirmed (AG), from Nora&#x27;s own
+labeled address. It is reachable only via a confirmed action descriptor (see
+app/pipeline.py ``_handle_confirm`` and app/main.py ``_execute_action``); there is no
+path to it from drafting, revise, or a fresh request.
+&quot;&quot;&quot;</code></pre><p class="src"><a href="https://github.com/joaoblasques/candidatura_marsshot/blob/main/nora/app/email/outbound.py">nora/app/email/outbound.py</a>, linhas 1–9</p><!-- /excerpt -->
+    <p>No produto principal só existe um envio a terceiros, e só se chega lá por uma ação confirmada. Não há caminho desde o rascunho, a revisão ou um pedido novo. O piloto descrito mais abaixo é um segundo caminho, deliberado e à parte, e não está nesta cópia do código. O docstring acima é de quando só havia propostas de reunião: hoje o mesmo caminho de envio serve também a partilha de ficheiros, e a reserva de agenda passa pelo cliente de calendário depois da mesma confirmação.</p>
+    <!-- excerpt: nora/app/email/gmail_oauth.py:15-17 --><pre><code># gmail.modify = read + drafts + labels. Deliberately NO gmail.send — auto-draft never sends,
+# and withholding the scope makes that a hard guarantee at the token level.
+GMAIL_OAUTH_SCOPES = [&quot;https://www.googleapis.com/auth/gmail.modify&quot;]</code></pre><p class="src"><a href="https://github.com/joaoblasques/candidatura_marsshot/blob/main/nora/app/email/gmail_oauth.py">nora/app/email/gmail_oauth.py</a>, linhas 15–17</p><!-- /excerpt -->
+    <p>No modo de rascunho automático nem sequer peço ao Gmail a permissão de enviar. A garantia está no token, não só no código.</p>
+    <!-- excerpt: nora/app/pipeline.py:843-869 --><pre><code>        if cp.approval == &quot;decline&quot;:
+            self.actions.delete(token)
+            self._emit_action(email, &quot;declined&quot;)
+            notice = NoraResult(
+                kind=ResultKind.ACTION_DECLINED,
+                text=f&quot;Cancelled — I won&#x27;t send anything to {record.recipient}.&quot;,
+                recipient=record.recipient,
+            )
+            return _HandlerResult(
+                compose_reply(notice, record.subject), None, ResultKind.ACTION_DECLINED
+            )
+        if cp.approval == &quot;confirm&quot; and not has_change:
+            # Single-use consume. Calendar holds (no durable outbox) consume HERE, before the
+            # create. Email/share sends consume in main AFTER the outbox.record
+            # (write-before-consume), so a crash in that window leaves the record pending and the
+            # approved send is recovered by the outbox replay / a re-AG — never silently lost. A
+            # double-send is still prevented by the idempotency-keyed send (KTD-D).
+            if record.action_kind == &quot;calendar_hold&quot;:
+                record.status = &quot;consumed&quot;
+                self.actions.put(record)
+            self._emit_action(email, &quot;confirmed&quot;)
+            descriptor = ActionDescriptor(
+                recipient=record.recipient, subject=record.subject, body=record.body, token=token,
+                action_kind=record.action_kind, payload=record.payload,
+            )
+            # No CEO reply here — main composes the outcome receipt AFTER the send (U6).
+            return _HandlerResult(None, None, ResultKind.ACTION_SENT, action=descriptor)</code></pre><p class="src"><a href="https://github.com/joaoblasques/candidatura_marsshot/blob/main/nora/app/pipeline.py">nora/app/pipeline.py</a>, linhas 843–869</p><!-- /excerpt -->
+    <p>A confirmação lê apenas a resposta escrita pelo CEO, nunca o texto citado. Qualquer alteração volta a pedir AG. A ação é de uso único e o envio tem chave de idempotência. Se o processo morrer a meio, no arranque reponho o envio quando o transporte garante idempotência. Quando não garante, descarto-o, aviso o CEO de que pode ter ou não saído e peço-lhe que confirme de novo, em vez de arriscar um duplicado a um terceiro.</p>
+    <h3>Porquê estas decisões</h3>
+    <ul>
+      <li><strong>Um único caminho de envio.</strong> O conteúdo de um email é input não confiável. Se um pedido malicioso, escondido numa conversa reencaminhada, puder chegar a um envio, o produto falhou. Com um só caminho, só alcançável por confirmação, há um único sítio a auditar.</li>
+      <li><strong>Garantia ao nível do token.</strong> É a segunda barreira: se o código falhar, o Google recusa o envio.</li>
+      <li><strong>Outbox.</strong> Um envio aprovado pelo CEO não pode perder-se se o processo morrer entre consumir a aprovação e enviar, nem duplicar-se. Guardo a intenção antes de enviar e reponho-a no arranque se o transporte garantir idempotência. Se não garantir, peço ao CEO nova confirmação: um duplicado a um terceiro é pior do que um envio que falhou.</li>
+    </ul>
+
+    <h3>Arquitetura</h3>
+    <p>Python 3.12 e FastAPI. O email entra por webhook. Um intérprete lê o código (<code>WIYOW</code> para redigir, <code>S</code> para resumir) ou texto livre, o pipeline redige com Claude, e a resposta volta para ti com um recibo em linguagem simples. O estado vive em ficheiros JSON atómicos, sem base de dados.</p>
+    <p>Escolhi ficheiros porque há uma instância num Mac Mini, o volume é pequeno, não quero dependências, e a escrita atómica (ficheiro temporário e <code>os.replace</code>) chega. Uma base de dados seria mais maquinaria do que isto precisa. O limite é claro: várias instâncias, ou multi-tenant a sério, pedem uma base de dados.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 640 210" role="img" aria-labelledby="d1t">
+        <title id="d1t">Fluxo: encaminhas a conversa, a Nora redige para ti, tu envias. Ações para fora passam por proposta, aprovação AG e só depois a Nora age.</title>
+        <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="currentColor"/></marker></defs>
+        <g class="box"><rect x="10" y="20" width="130" height="50" rx="8"/><rect x="190" y="20" width="150" height="50" rx="8"/><rect x="390" y="20" width="110" height="50" rx="8"/><rect x="530" y="20" width="100" height="50" rx="8"/></g>
+        <g class="txt"><text x="75" y="50" text-anchor="middle">Encaminhas</text><text x="265" y="50" text-anchor="middle">Nora redige</text><text x="445" y="50" text-anchor="middle">Rascunho</text><text x="580" y="50" text-anchor="middle">Tu envias</text></g>
+        <g class="line"><path d="M140 45H186" marker-end="url(#ar)"/><path d="M340 45H386" marker-end="url(#ar)"/><path d="M500 45H526" marker-end="url(#ar)"/></g>
+        <g class="box dashed"><rect x="190" y="130" width="130" height="50" rx="8"/><rect x="360" y="130" width="90" height="50" rx="8"/><rect x="490" y="130" width="140" height="50" rx="8"/></g>
+        <g class="txt"><text x="255" y="160" text-anchor="middle">Proposta</text><text x="405" y="160" text-anchor="middle">Tu: AG</text><text x="560" y="160" text-anchor="middle">Nora age</text></g>
+        <g class="line dashed"><path d="M265 70V126" marker-end="url(#ar)"/><path d="M320 155H356" marker-end="url(#ar)"/><path d="M450 155H486" marker-end="url(#ar)"/></g>
+        <text class="cap" x="10" y="200">Linha tracejada: ações para fora. Só depois da tua aprovação.</text>
+      </svg>
+    </figure>
+    <p>O produto está desenhado para três níveis de garantia: R1 com LLM na cloud, R2 com rascunhos dentro do tenant do cliente, R3 com inferência local e zero saída de dados. R1 é o que corre por omissão. R2 e R3 só funcionam quando há um backend configurado, e sem ele a relação é recusada em vez de cair para a cloud. O nível resolve-se por contraparte, não por conta: o endereço exato ganha ao domínio, o valor por omissão é R1 e um valor desconhecido cai em R1.</p>
+    <!-- excerpt: nora/app/posture.py:33-49 --><pre><code>def resolve_posture(counterparty: str | None, settings: Settings) -&gt; Posture:
+    &quot;&quot;&quot;Resolve a relationship&#x27;s posture from the counterparty address. Exact-address
+    match wins over domain match; default R1. Unknown rung strings fall back to R1.&quot;&quot;&quot;
+    party = (counterparty or &quot;&quot;).strip().lower()
+    if not party or not settings.posture_map:
+        return Posture(rung=Rung.R1)
+    mapping = {k.strip().lower(): v for k, v in settings.posture_map.items()}
+    raw = mapping.get(party)
+    if raw is None and &quot;@&quot; in party:
+        raw = mapping.get(party.split(&quot;@&quot;, 1)[1])
+    if raw is None:
+        return Posture(rung=Rung.R1)
+    try:
+        return Posture(rung=Rung(str(raw).strip().upper()))
+    except ValueError:
+        logger.warning(&quot;posture_map has unknown rung %r — treating as R1&quot;, raw)
+        return Posture(rung=Rung.R1)</code></pre><p class="src"><a href="https://github.com/joaoblasques/candidatura_marsshot/blob/main/nora/app/posture.py">nora/app/posture.py</a>, linhas 33–49</p><!-- /excerpt -->
+
+    <h3>Do commit à produção</h3>
+    <p>A produção corre num Mac Mini, sempre ligado. Nada lá chega sem testes verdes em três sítios: o CI (ruff e pytest), o <code>release.sh</code> (suite completa local antes de criar a tag <code>prod-AAAA-MM-DD</code>) e o <code>promote.sh</code> (volta a correr os testes na máquina de produção e aborta se falharem, deixando a produção como estava). Depois o <code>smoke_prod.sh</code> verifica o endpoint de saúde e os serviços.</p>
+    <figure class="diagram">
+      <svg viewBox="0 0 640 110" role="img" aria-labelledby="d2t">
+        <title id="d2t">Pipeline: CI com ruff e pytest, release.sh com testes locais e tag, promote.sh com testes e reinício, smoke_prod.sh com verificação de saúde.</title>
+        <g class="box"><rect x="5" y="25" width="130" height="56" rx="8"/><rect x="170" y="25" width="140" height="56" rx="8"/><rect x="345" y="25" width="140" height="56" rx="8"/><rect x="520" y="25" width="115" height="56" rx="8"/></g>
+        <g class="txt"><text x="70" y="50" text-anchor="middle">CI</text><text x="70" y="70" text-anchor="middle" class="sub">ruff + pytest</text><text x="240" y="50" text-anchor="middle">release.sh</text><text x="240" y="70" text-anchor="middle" class="sub">testes + tag</text><text x="415" y="50" text-anchor="middle">promote.sh</text><text x="415" y="70" text-anchor="middle" class="sub">testes + reinício</text><text x="577" y="50" text-anchor="middle">smoke</text><text x="577" y="70" text-anchor="middle" class="sub">saúde + serviços</text></g>
+        <g class="line"><path d="M135 53H166" marker-end="url(#ar)"/><path d="M310 53H341" marker-end="url(#ar)"/><path d="M485 53H516" marker-end="url(#ar)"/></g>
+      </svg>
+    </figure>
+    <!-- excerpt: nora/scripts/release.sh:40-52 --><pre><code># Local verification gate (KTD): nothing earns a release tag — and so nothing can be promoted
+# to the Mini — unless the FULL dev-machine suite is green here first. This is what tests every
+# change (including anything the agentics self-dev helper merged) on the local machine before it
+# can reach prod. The Mini&#x27;s promote.sh re-runs tests too (defence in depth); this catches
+# problems on the dev box first. Emergency override (use sparingly): NORA_RELEASE_SKIP_TESTS=1.
+if [ &quot;${NORA_RELEASE_SKIP_TESTS:-0}&quot; = &quot;1&quot; ]; then
+  echo &quot;WARNING: NORA_RELEASE_SKIP_TESTS=1 — skipping the local test gate (emergency override).&quot; &gt;&amp;2
+else
+  echo &quot;== Local verification before release (pytest + ruff) ==&quot;
+  uv run pytest -q
+  uv run ruff check .
+  echo &quot;== Local checks PASS — cutting the release ==&quot;
+fi</code></pre><p class="src"><a href="https://github.com/joaoblasques/candidatura_marsshot/blob/main/nora/scripts/release.sh">nora/scripts/release.sh</a>, linhas 40–52</p><!-- /excerpt -->
+    <p>O release só existe se a suite completa passar. Há um override de emergência, e fica à vista. A versão aberta tem 684 testes a passar sem credenciais.</p>
+    <h3>Um cliente real: Forecast Factor</h3>
+    <p>A <a href="https://www.forecastfactor.ai/">Forecast Factor</a> vende investigação de preços de commodities. Hoje a Nora envia emails com sinais sobre as commodities que cada utilizador acompanha. Corre de forma permanente num Mac Mini dedicado. O modo tem um dry-run, em que cada email vai primeiro a um aprovador, antes de ir para os utilizadores.</p>
+    <p>Desenhei também um modo de entrega automática de ficheiros, testado em código, com três garantias fixas no lugar da aprovação por pedido: o remetente tem de estar verificado por DKIM e na lista autorizada; só se envia o que está num catálogo pré-aprovado; e a resposta vai sempre para o remetente verificado, ignorando qualquer Reply-To ou destinatário no corpo. Ambos os modos são à parte, desligados por omissão, e não tocam na regra de que a Nora nunca envia como o utilizador.</p>
+
+    <h3>Ver o código</h3>
+    <p>A cópia pública em <a href="https://github.com/joaoblasques/candidatura_marsshot/blob/main/nora/">nora/</a> é um snapshot sem histórico do repositório privado. <a href="https://github.com/joaoblasques/candidatura_marsshot/blob/main/nora/MIRROR.md">MIRROR.md</a> lista o que foi removido e substituído. Arquitetura completa em <a href="https://github.com/joaoblasques/candidatura_marsshot/blob/main/nora/docs/architecture.md">architecture.md</a>.</p>
+  </section>
+
+  <section id="como-trabalho">
+    <h2>Como trabalho</h2>
+
+    <h3>Do problema de negócio ao código</h3>
+    <p>Começo pela regra de negócio que não pode falhar e desenho o sistema à volta dela. Na Nora foi "nunca enviar como o utilizador". Depois escrevo os testes primeiro e só passo ao código quando falham pelo motivo certo.</p>
+
+    <h3>IA como acelerador, com regras</h3>
+    <p>Uso agentes de código todos os dias, mas com um contrato escrito: o ficheiro <a href="https://github.com/joaoblasques/candidatura_marsshot/blob/main/nora/CLAUDE.md">CLAUDE.md</a> do projeto diz-lhes o que nunca podem fazer, como se testa e o que é "feito". O agente propõe, os testes e o CI decidem.</p>
+
+    <h3>Outros projetos</h3>
+    <p>Há mais no <a href="https://joaoblasques.com">joaoblasques.com</a>. Estes dois são públicos no GitHub.</p>
+    <div class="cards">
+      <article class="card">
+        <h4><a href="https://github.com/joaoblasques/vitals">Vitals</a> · <a href="https://joaoblasques.com/vitals/">site</a></h4>
+        <p>Lakehouse de dados clínicos (medallion em Databricks/Delta, dbt, Airflow, PySpark) que serve três saídas: marts analíticos, feature store e índice vetorial.</p>
+      </article>
+      <article class="card">
+        <h4><a href="https://github.com/joaoblasques/fleetlytics">Fleetlytics</a></h4>
+        <p>Os mesmos dados de uma frota de robôs modelados duas vezes: 3NF para leitura operacional e star schema em dbt para KPIs, com os números de desempenho medidos.</p>
+      </article>
+    </div>
+  </section>
+
+  <section id="ideias">
+    <h2>Ideias para a Mars Shot</h2>
+    <p class="lead">Quatro ideias que gostava de construir convosco. Cada uma começa por resolver um problema da própria Mars Shot e pode depois virar solução para clientes ou material para palestras.</p>
+    <p>Ofereço o método e gostava de ajudar a implementá-lo. Não peço nada em troca.</p>
+
+    <article class="idea">
+      <h3>1. Camadas de acesso para a IA</h3>
+      <dl>
+        <dt>Problema</dt><dd>A IA só é útil com muito contexto, mas contratos, valores e dados de RH não podem estar à vista de todos. A resposta habitual é dar à IA tudo ou quase nada.</dd>
+        <dt>Como</dt><dd>A IA herda as permissões de quem lhe pergunta. Tarefas automáticas usam contas com o mínimo necessário e publicam resultados saneados. As camadas (toda a empresa, por equipa, restrito) são etiquetas de sensibilidade, e a organização por ação segue o PARA e o GTD.</dd>
+        <dt>Primeira versão</dt><dd>Um piloto com uma caixa de email, só rascunhos, em que a Nora lê apenas as pastas que a política definir. Ofereço a Nora como piloto interno.</dd>
+        <dt>Depois</dt><dd>Uma auditoria de exposição de informação antes de ligar o Copilot, a par das vossas academias de Office 365 e de AI, NIS2 e Governance.</dd>
+      </dl>
+    </article>
+
+    <article class="idea">
+      <h3>2. A lente jurídica da empresa</h3>
+      <dl>
+        <dt>Problema</dt><dd>Contratos e NDAs são assinados sem a lente da empresa. As regras vivem na cabeça de quem lê.</dd>
+        <dt>Primeira versão</dt><dd>Uma entrevista inicial em que a Mars Shot define valores, preocupações e limites jurídicos, incluindo a confidencialidade dos clientes e o direito português. Fica num playbook versionado e validado por um advogado. Depois, cada contrato passa por uma revisão com essa lente, sempre como rascunho para o advogado.</dd>
+        <dt>Depois</dt><dd>O playbook jurídico de uma PME, como serviço.</dd>
+      </dl>
+    </article>
+
+    <article class="idea">
+      <h3>3. FeedHive no LinkedIn da Mars Shot</h3>
+      <dl>
+        <dt>Problema</dt><dd>Presença inconsistente, cara em tempo, sem forma de saber o que funciona.</dd>
+        <dt>Primeira versão</dt><dd>90 dias de linha de base, depois 8 semanas com rascunhos de IA aprovados pelo Hugo, e um relatório com números e limites declarados. É um caso observado, não uma prova de causa. A métrica principal é o tempo poupado por post.</dd>
+        <dt>Depois</dt><dd>Um workshop prático em que cada participante monta e mede a sua própria experiência.</dd>
+      </dl>
+    </article>
+
+    <article class="idea">
+      <h3>4. Auditoria de IA produtizada</h3>
+      <dl>
+        <dt>Problema</dt><dd>As PMEs querem IA e não sabem por onde começar, nem o que vale a pena.</dd>
+        <dt>Primeira versão</dt><dd>45 minutos de diagnóstico e um relatório com intervalos e linha de base medida, com o humano no comando. Um pacote vertical para imobiliárias como primeiro exemplo, num piloto com uma imobiliária da vossa rede. Ainda não há caso real: é o desenho de um piloto.</dd>
+        <dt>Depois</dt><dd>Uma auditoria produtizada, com pacotes por vertical.</dd>
+      </dl>
+    </article>
+  </section>
+
+  <section id="contacto">
+    <h2>Contacto</h2>
+    <p class="lead">Vamos falar?</p>
+    <p>
+      <a href="https://joaoblasques.com"><strong>joaoblasques.com</strong></a> ·
+      <a href="https://www.linkedin.com/in/joaoblasques">LinkedIn</a> ·
+      <a href="mailto:joaoeduardoblasques@gmail.com">email</a> ·
+      <a href="https://github.com/joaoblasques">GitHub</a>
+    </p>
+    <p>O CV está em <a href="https://joaoblasques.com/cv/">joaoblasques.com/cv</a> e envio-o também por email.</p>
+  </section>
+</main>
+</body>
+</html>

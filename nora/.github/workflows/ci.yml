@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv (with Python 3.12)
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies (locked)
+        run: uv sync --frozen
+
+      - name: Lint
+        run: uv run ruff check app tests scripts
+
+      - name: Tests
+        # The real-model drafting eval (-m eval) is excluded by default (no API
+        # key in CI, and it costs tokens). The default suite runs offline.
+        run: uv run pytest -q
