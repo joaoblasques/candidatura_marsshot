@@ -19,6 +19,7 @@ ALLOWED_EXACT = (
     "https://github.com/joaoblasques",
     "https://joaoblasques.com",
     "https://www.linkedin.com/in/joaoblasques",
+    "https://destilar-ia.pt/faturista",
     "mailto:joaoeduardoblasques@gmail.com",
 )
 FORBIDDEN_TEXT = ("app.nora-bennett.com",)

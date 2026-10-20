@@ -185,6 +185,12 @@ def test_site_allows_own_site_subpages_but_not_lookalikes(tmp_path):
     assert bad.returncode == 1
 
 
+def test_site_allows_faturista_link_only(tmp_path):
+    ok = check_site(page(tmp_path, '<a href="https://destilar-ia.pt/faturista">f</a>'))
+    assert ok.returncode == 0, ok.stdout + ok.stderr
+    assert check_site(page(tmp_path, '<a href="https://destilar-ia.pt/other">x</a>')).returncode == 1
+
+
 def test_site_rejects_app_domain(tmp_path):
     r = check_site(page(tmp_path, "<p>app.nora-bennett.com</p>"))
     assert r.returncode == 1
@@ -305,3 +311,92 @@ def test_history_scan_still_catches_leak_in_a_long_history(tmp_path):
                    env=leak, check=True, capture_output=True)
     r = run(tmp_path / "mirror", names=names_file(tmp_path, "leak@example.com"), repo=repo)
     assert r.returncode == 1 and "history" in (r.stdout + r.stderr).lower()
+
+
+def test_nora_subsections_start_collapsed():
+    # Jonas: the Nora subsections must be collapsed by default so the ideas are not buried.
+    html = (ROOT / "index.html").read_text()
+    nora = html[html.index('<section id="nora">') : html.index('<section id="como-trabalho">')]
+    subs = nora.count("<h3>")
+    assert subs >= 5
+    assert nora.count('<details class="sub">') == subs  # every h3 lives in a details
+    assert "<details class=\"sub\" open" not in nora and "<details open" not in nora
+
+
+def test_para_and_gtd_have_explanations():
+    # Few people know PARA or GTD: each must carry a short explanation on hover/focus/touch.
+    import re
+
+    html = (ROOT / "index.html").read_text()
+    for term in ("PARA", "GTD"):
+        m = re.search(r'<span class="tip" tabindex="0"[^>]*data-tip="([^"]{40,})"[^>]*>' + term + "</span>", html)
+        assert m, f"{term} needs a tooltip explanation"
+
+
+def _tips():
+    from html.parser import HTMLParser
+
+    class P(HTMLParser):
+        def __init__(self):
+            super().__init__()
+            self.stack, self.tips, self.bad = [], [], []
+            self.cur = None
+
+        def handle_starttag(self, tag, attrs):
+            a = dict(attrs)
+            if tag == "span" and "tip" in (a.get("class") or "").split():
+                self.cur = {"label": a.get("aria-label", ""), "tip": a.get("data-tip", ""), "text": ""}
+                bad = [t for t in self.stack if t in ("a", "summary", "h1", "h2", "h3", "h4", "pre", "code", "svg", "nav")]
+                if bad:
+                    self.bad.append(bad)
+            if tag not in ("br", "img", "meta", "link", "input", "hr", "path", "rect", "text", "marker"):
+                self.stack.append(tag)
+
+        def handle_endtag(self, tag):
+            if tag in self.stack:
+                while self.stack and self.stack.pop() != tag:
+                    pass
+            if tag == "span" and self.cur is not None:
+                self.tips.append(self.cur)
+                self.cur = None
+
+        def handle_data(self, data):
+            if self.cur is not None:
+                self.cur["text"] += data
+
+    p = P()
+    p.feed((ROOT / "index.html").read_text())
+    return p
+
+
+MUST_EXPLAIN = ["Data Engineering", "DKIM", "webhook", "idempotência", "Outbox", "LLM", "tenant", "dry-run",
+                "Copilot", "governança", "lakehouse", "feature store", "star schema", "commodities", "token"]
+
+
+def test_hard_terms_have_explanations():
+    p = _tips()
+    texts = {t["text"].lower() for t in p.tips}
+    for term in MUST_EXPLAIN:
+        assert term.lower() in texts, f"missing explanation for {term}"
+
+
+def test_tips_are_well_formed_and_not_inside_links_headings_or_code():
+    p = _tips()
+    assert len(p.tips) >= 20
+    assert not p.bad, p.bad
+    for t in p.tips:
+        assert len(t["tip"]) >= 30 and t["label"].startswith(t["text"] + ": ") and t["tip"] in t["label"]
+
+
+def test_project_cards_are_two_rows_of_two_with_corpus_beside_the_lakehouse_bridge():
+    html = (ROOT / "index.html").read_text()
+    cards = html[html.index('<div class="cards">') : html.index("</section>", html.index('<div class="cards">'))]
+    order = ["Vitals", "Fleetlytics", "Corpus", "Lakehouse CDC Bridge"]
+    pos = [cards.index(f">{n}</a>") for n in order]
+    assert pos == sorted(pos), "cards must come in this order"
+    assert cards.count('<article class="card') == 4
+    assert 'href="https://joaoblasques.com/corpus/"' in cards
+    assert 'href="https://github.com/joaoblasques/corpus"' in cards
+    assert 'href="https://joaoblasques.com/lakehouse-cdc-bridge/"' in cards
+    assert 'href="https://github.com/joaoblasques/lakehouse-cdc-bridge"' in cards
+    assert "sintétic" in cards, "the bridge uses synthetic data and the card must say so"

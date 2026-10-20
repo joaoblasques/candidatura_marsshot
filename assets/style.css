@@ -49,7 +49,8 @@ pre code { font-size: inherit; }
 .diagram .txt text { fill: var(--fg); font: 15px system-ui, sans-serif; }
 .diagram .txt .sub { fill: var(--muted); font-size: 12px; }
 .diagram .cap { fill: var(--muted); font: 12px system-ui, sans-serif; }
-.cards { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr)); }
+.cards { display: grid; gap: 1rem; grid-template-columns: 1fr; }
+@media (min-width: 40rem) { .cards { grid-template-columns: repeat(2, 1fr); } }
 .card { background: var(--surface); border-radius: 8px; padding: 1rem 1.25rem; }
 .card h4 { margin: 0 0 .5rem; font-size: 1.1rem; }
 .card p { margin: 0; }
@@ -61,3 +62,18 @@ pre code { font-size: inherit; }
 @media (max-width: 40rem) { .idea dl { grid-template-columns: 1fr; gap: 0; } .idea dt { margin-top: .75rem; } }
 .site-cta { border-left: 4px solid var(--accent); padding: .75rem 1rem; background: var(--surface); font-size: 1.125rem; max-width: 40rem; }
 nav .ext { margin-left: auto; color: var(--accent); }
+details.sub { border-top: 1px solid var(--surface); padding: .35rem 0; }
+details.sub > summary { cursor: pointer; padding: .4rem 0; }
+details.sub > summary h3 { display: inline; margin: 0; }
+details.sub[open] > summary { margin-bottom: .5rem; }
+.hint { color: var(--muted); font-size: .9rem; }
+main p, main li, main dd { position: relative; }
+.tip { border-bottom: 1px dotted var(--accent); cursor: help; }
+.tip:hover::after, .tip:focus::after {
+  content: attr(data-tip); box-sizing: border-box; position: absolute; left: 0; top: 100%; z-index: 5; width: min(24rem, 100%);
+  margin-top: .35rem; padding: .6rem .8rem; border: 1px solid var(--accent); border-radius: 8px;
+  background: var(--bg); color: var(--fg); font-size: .9rem; font-weight: 400; line-height: 1.45;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .2);
+}
+.card.emph { border-left: 4px solid var(--accent); }
+.card p + p { margin-top: .6rem; }
