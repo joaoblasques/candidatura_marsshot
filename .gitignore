@@ -7,3 +7,6 @@ node_modules/
 
 # Design and plan stay local (process notes, not part of the public application)
 docs/superpowers/
+
+# Working-state handoff stays local (repo is public)
+HANDOFF.md
